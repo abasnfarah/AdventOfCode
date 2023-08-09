@@ -38,7 +38,6 @@ func (g *groupData) generateGroups(fileName string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		group = append(group, val)
 	}
 
@@ -50,27 +49,25 @@ func (g *groupData) generateGroups(fileName string) {
 	g.setMaxValue()
 	g.setTopThree()
 }
- 
-func (g *groupData) setData(){
+
+func (g *groupData) setData() {
 	for _, group := range g.groups {
 		var sum int
-
 		for _, val := range group {
 			sum += val
 		}
-
 		g.data = append(g.data, sum)
-		slices.SortFunc(g.data, func(a, b int) int{
+		slices.SortFunc(g.data, func(a, b int) int {
 			return cmp.Compare(b, a)
 		})
 	}
 }
 
-func (g *groupData) setMaxValue(){
+func (g *groupData) setMaxValue() {
 	g.maxValue = slices.Max(g.data)
 }
 
-func (g *groupData) setTopThree(){
+func (g *groupData) setTopThree() {
 	for i := 0; i < 3; i++ {
 		g.topThree += g.data[i]
 	}
