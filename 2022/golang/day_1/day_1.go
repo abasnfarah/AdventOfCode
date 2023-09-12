@@ -10,27 +10,60 @@ import (
 	"strings"
 )
 
-type groupData struct {
-	groups   [][]int
-	data     []int
-	maxValue int
-	topThree int
+type DataStrategy interface{
+  Calculate([]int) int
 }
 
-func (g *groupData) generateGroups(fileName string) {
+type SumStrategy struct{}
+
+func (s SumStrategy) Calculate(group []int) int {
+	var sum int
+	for _, val := range group {
+		sum += val
+	}
+
+	return sum
+}
+
+type MaxThreeStrategy struct{}
+
+func (s MaxThreeStrategy) Calculate(group []int) int {
+ 	slices.SortFunc(group, func(a, b int) int {
+		return cmp.Compare(b, a)
+	})
+  maxThreeValues := 0
+
+  for i := 0; i < 3 && i < len(group); i++ {
+    maxThreeValues += group[i]
+  }
+
+	return maxThreeValues
+}
+
+type GroupData struct {
+	groups   [][]int
+	data     []int
+  calculatedValue int
+  strategy DataStrategy
+}
+
+func (g *GroupData) loadGroups(fileName string) {
 	d, err := os.ReadFile(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	lines := strings.Split(string(d), "\n")
 
 	var group []int
+
 	for _, line := range lines {
 		if line == "" {
 			if len(group) > 0 {
 				g.groups = append(g.groups, group)
 				group = []int{}
 			}
+
 			continue
 		}
 
@@ -38,47 +71,47 @@ func (g *groupData) generateGroups(fileName string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		group = append(group, val)
 	}
 
 	if len(group) > 0 {
 		g.groups = append(g.groups, group)
 	}
-
-	g.setData()
-	g.setMaxValue()
-	g.setTopThree()
 }
 
-func (g *groupData) setData() {
+func (g *GroupData) SetStrategy(s DataStrategy) {
+	g.strategy = s
+}
+
+func (g *GroupData) CalculateGroup() {
+	g.data = []int{}
 	for _, group := range g.groups {
-		var sum int
-		for _, val := range group {
-			sum += val
-		}
-		g.data = append(g.data, sum)
-		slices.SortFunc(g.data, func(a, b int) int {
-			return cmp.Compare(b, a)
-		})
+		g.data = append(g.data, g.strategy.Calculate(group))
 	}
 }
 
-func (g *groupData) setMaxValue() {
-	g.maxValue = slices.Max(g.data)
+func (g *GroupData) CalculateData() {
+  g.calculatedValue = g.strategy.Calculate(g.data)
 }
 
-func (g *groupData) setTopThree() {
-	for i := 0; i < 3; i++ {
-		g.topThree += g.data[i]
-	}
+func (g *GroupData) SortData() {
+	slices.SortFunc(g.data, func(a, b int) int {
+		return cmp.Compare(b, a)
+	})
 }
 
 func main() {
-	groupData := groupData{}
-	groupData.generateGroups("calories.txt")
+	groupData := GroupData{}
+	groupData.loadGroups("calories.txt")
 
-	fmt.Printf("Groups: %v\n\r", groupData.groups)
-	fmt.Printf("Data: %d\n\r", groupData.data)
-	fmt.Printf("Max: %d\n\r", groupData.maxValue)
-	fmt.Printf("Data: %d\n\r", groupData.topThree)
+  groupData.SetStrategy(SumStrategy{})
+	groupData.CalculateGroup()
+  groupData.SortData()
+  fmt.Printf("Using Sum Strategy: %v\n", groupData.data)
+  fmt.Printf("Using Sum Strategy. Elf with most food has these much: %v\n", groupData.data[0])
+
+	groupData.SetStrategy(MaxThreeStrategy{})
+	groupData.CalculateData()
+	fmt.Printf("Using Max Strategy: %v\n", groupData.calculatedValue)
 }
